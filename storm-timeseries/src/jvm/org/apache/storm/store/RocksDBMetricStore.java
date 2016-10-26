@@ -72,6 +72,14 @@ public class RocksDBMetricStore implements MetricStore {
         }
     }
 
+    @Override
+    public void teardown() {
+        System.out.Println("Begin teardown of RocksDB in " + rootDir); //ASK: Is there a storm logger?
+        if (store != null) {
+            store.close();
+        }
+        System.out.Println("Finished teardown of RocksDB in " + rootDir); //ASK: Is there a storm logger?
+    }
 
     /* Setup the root directory for RocksDB*/
     public void initDir(Map<Object, Object> config) {
