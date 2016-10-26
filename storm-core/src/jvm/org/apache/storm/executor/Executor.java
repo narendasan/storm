@@ -74,6 +74,7 @@ import org.json.simple.JSONValue;
 import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.storm.metric.StormMetricRegistry;
 
 import java.util.concurrent.Callable;
 
@@ -114,9 +115,11 @@ public abstract class Executor implements Callable, EventHandler<Object> {
     protected final Boolean isDebug;
     protected final Boolean hasEventLoggers;
     protected String hostname;
+    protected final StormMetricRegistry metrics;
 
     protected Executor(WorkerState workerData, List<Long> executorId, Map<String, String> credentials) {
         this.workerData = workerData;
+        metrics = (StormMetricRegistry) this.workerData.get("metric-registry");
         this.executorId = executorId;
         this.workerTopologyContext = workerData.getWorkerTopologyContext();
         this.taskIds = StormCommon.executorIdToTasks(executorId);
@@ -146,10 +149,10 @@ public abstract class Executor implements Callable, EventHandler<Object> {
         Map<String, Bolt> bolts = topology.get_bolts();
         if (spouts.containsKey(componentId)) {
             this.type = StatsUtil.SPOUT;
-            this.stats = new SpoutExecutorStats(ConfigUtils.samplingRate(stormConf));
+            this.stats = new SpoutExecutorStats(metrics, ConfigUtils.samplingRate(stormConf));
         } else if (bolts.containsKey(componentId)) {
             this.type = StatsUtil.BOLT;
-            this.stats = new BoltExecutorStats(ConfigUtils.samplingRate(stormConf));
+            this.stats = new BoltExecutorStats(metrics, ConfigUtils.samplingRate(stormConf));
         } else {
             throw new RuntimeException("Could not find " + componentId + " in " + topology);
         }
@@ -183,10 +186,10 @@ public abstract class Executor implements Callable, EventHandler<Object> {
         String type = getExecutorType(workerTopologyContext, componentId);
         if (StatsUtil.SPOUT.equals(type)) {
             executor = new SpoutExecutor(workerState, executorId, credentials);
-            executor.stats = new SpoutExecutorStats(ConfigUtils.samplingRate(executor.getStormConf()));
+            executor.stats = new SpoutExecutorStats(metrics, ConfigUtils.samplingRate(executor.getStormConf()));
         } else {
             executor = new BoltExecutor(workerState, executorId, credentials);
-            executor.stats = new BoltExecutorStats(ConfigUtils.samplingRate(executor.getStormConf()));
+            executor.stats = new BoltExecutorStats(metrics, ConfigUtils.samplingRate(executor.getStormConf()));
         }
 
         Map<Integer, Task> idToTask = new HashMap<>();

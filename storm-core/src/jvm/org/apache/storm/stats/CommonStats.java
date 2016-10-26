@@ -23,6 +23,10 @@ import org.apache.storm.generated.ExecutorStats;
 import org.apache.storm.metric.api.IMetric;
 import org.apache.storm.metric.internal.MultiCountStatAndMetric;
 import org.apache.storm.metric.internal.MultiLatencyStatAndMetric;
+import org.apache.storm.metric.StormMetricRegistry;
+
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Meter;
 
 @SuppressWarnings("unchecked")
 public abstract class CommonStats {
@@ -37,10 +41,15 @@ public abstract class CommonStats {
     protected final int rate;
     protected final Map<String, IMetric> metricMap = new HashMap<>();
 
-    public CommonStats(int rate) {
+    protected final Map<String, Meter> codaHaleMetricMap = new HashMap<>();
+
+    protected StormMetricRegistry metrics;
+
+    public CommonStats(StormMetricRegistry metrics, int rate) {
         this.rate = rate;
         this.put(EMITTED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
         this.put(TRANSFERRED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
+        this.metrics = metrics;
     }
 
     public int getRate() {
@@ -65,10 +74,21 @@ public abstract class CommonStats {
 
     public void emittedTuple(String stream) {
         this.getEmitted().incBy(stream, this.rate);
+        this.getCounter(stream, EMITTED).inc(this.rate);
+    }
+   
+    private Counter getCounter(String stream, String metricName){
+        String fqMeterName = this.metrics.scopedName(stream, metricName);
+        Counter result = this.metrics.getCounters().get(fqMeterName);
+        if (result == null) {
+            return this.metrics.counter(fqMeterName);
+        }
+        return result;
     }
 
     public void transferredTuples(String stream, int amount) {
         this.getTransferred().incBy(stream, this.rate * amount);
+        this.getCounter(stream, TRANSFERRED).inc(this.rate * amount);
     }
 
     public void cleanupStats() {

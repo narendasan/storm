@@ -23,6 +23,8 @@ import org.apache.storm.generated.SpoutStats;
 import org.apache.storm.metric.internal.MultiCountStatAndMetric;
 import org.apache.storm.metric.internal.MultiLatencyStatAndMetric;
 
+import org.apache.storm.metric.StormMetricRegistry;
+
 @SuppressWarnings("unchecked")
 public class SpoutExecutorStats extends CommonStats {
 
@@ -30,8 +32,8 @@ public class SpoutExecutorStats extends CommonStats {
     public static final String FAILED = "failed";
     public static final String COMPLETE_LATENCIES = "complete-latencies";
 
-    public SpoutExecutorStats(int rate) {
-        super(rate);
+    public SpoutExecutorStats(StormMetricRegistry metrics, int rate) {
+        super(metrics, rate);
         this.put(ACKED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
         this.put(FAILED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
         this.put(COMPLETE_LATENCIES, new MultiLatencyStatAndMetric(NUM_STAT_BUCKETS));

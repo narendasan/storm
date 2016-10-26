@@ -25,19 +25,23 @@ import org.apache.storm.generated.ExecutorStats;
 import org.apache.storm.metric.internal.MultiCountStatAndMetric;
 import org.apache.storm.metric.internal.MultiLatencyStatAndMetric;
 
+import org.apache.storm.metric.StormMetricRegistry;
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Timer;
+
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("unchecked")
 public class BoltExecutorStats extends CommonStats {
-
     public static final String ACKED = "acked";
     public static final String FAILED = "failed";
     public static final String EXECUTED = "executed";
     public static final String PROCESS_LATENCIES = "process-latencies";
     public static final String EXECUTE_LATENCIES = "execute-latencies";
 
-    public BoltExecutorStats(int rate) {
-        super(rate);
+    public BoltExecutorStats(StormMetricRegistry metrics, int rate) {
+        super(metrics, rate);
 
         this.put(ACKED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
         this.put(FAILED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
@@ -65,22 +69,47 @@ public class BoltExecutorStats extends CommonStats {
     public MultiLatencyStatAndMetric getExecuteLatencies() {
         return (MultiLatencyStatAndMetric) this.get(EXECUTE_LATENCIES);
     }
+   
+    private Counter getCounter(String component, String stream, String metricName){
+        String fqMeterName = this.metrics.scopedName(component, stream, metricName);
+        Counter result = this.metrics.getCounters().get(fqMeterName);
+        if (result == null) {
+            return this.metrics.counter(fqMeterName);
+        }
+        return result;
+    }
+
+    private Timer getTimer(String component, String stream, String metricName){
+        String fqMeterName = this.metrics.scopedName(component, stream, metricName);
+        Timer result = this.metrics.getTimers().get(fqMeterName);
+        if (result == null) {
+            return this.metrics.timer(fqMeterName);
+        }
+        return result;
+    }
 
     public void boltExecuteTuple(String component, String stream, long latencyMs) {
         List key = Lists.newArrayList(component, stream);
         this.getExecuted().incBy(key, this.rate);
         this.getExecuteLatencies().record(key, latencyMs);
+
+        this.getCounter(component, stream, EXECUTED).inc(this.rate);
+        this.getTimer(component, stream, EXECUTE_LATENCIES).update(latencyMs, TimeUnit.MILLISECONDS);
     }
 
     public void boltAckedTuple(String component, String stream, long latencyMs) {
         List key = Lists.newArrayList(component, stream);
         this.getAcked().incBy(key, this.rate);
         this.getProcessLatencies().record(key, latencyMs);
+
+        this.getCounter(component, stream, ACKED).inc(this.rate);
+        this.getTimer(component, stream, PROCESS_LATENCIES).update(latencyMs, TimeUnit.MILLISECONDS);
     }
 
     public void boltFailedTuple(String component, String stream, long latencyMs) {
         List key = Lists.newArrayList(component, stream);
         this.getFailed().incBy(key, this.rate);
+        this.getCounter(component, stream, FAILED).inc(this.rate);
 
     }
 

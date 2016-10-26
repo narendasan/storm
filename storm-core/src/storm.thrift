@@ -619,6 +619,8 @@ service Nimbus {
   void deactivate(1: string name) throws (1: NotAliveException e, 2: AuthorizationException aze);
   void rebalance(1: string name, 2: RebalanceOptions options) throws (1: NotAliveException e, 2: InvalidTopologyException ite, 3: AuthorizationException aze);
 
+  void consumeMetric(1: string name, 2: double value);
+
   // dynamic log levels
   void setLogConfig(1: string name, 2: LogConfig config);
   LogConfig getLogConfig(1: string name);
