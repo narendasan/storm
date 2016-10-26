@@ -99,6 +99,16 @@ public class RocksDBMetricStore implements MetricStore {
         return null;
     }
 
+    @Override
+    public void put(String key, Object value) {
+        byte[] data = Utils.javaSerialize(value);
+        try {
+            store.put(key.getBytes(), data);
+        } catch (Exception e) {
+            System.out.Println("Failed to store value of " + key); //ASK: Is there a storm logger?
+        }
+    }
+
     /* Setup the root directory for RocksDB*/
     public void initDir(Map<Object, Object> config) {
         String configDir = (String) config.get(ROCKSDB_ROOT_DIR);
