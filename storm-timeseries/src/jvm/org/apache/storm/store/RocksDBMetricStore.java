@@ -81,6 +81,24 @@ public class RocksDBMetricStore implements MetricStore {
         System.out.Println("Finished teardown of RocksDB in " + rootDir); //ASK: Is there a storm logger?
     }
 
+    @Override
+    public Object get(String key) {
+        try {
+            byte[] data = db.get(key.getBytes());
+            if (data != null) {
+                try {
+                    return Utils.javaDeserialize(data);
+                } catch (Exception e) {
+                    System.out.Println("Failed to deserialize value of " + key); //ASK: Is there a storm logger?
+                    store.remove(key.getBytes());
+                    return null;
+                }
+            }
+        } catch (Exception ignore) {}
+
+        return null;
+    }
+
     /* Setup the root directory for RocksDB*/
     public void initDir(Map<Object, Object> config) {
         String configDir = (String) config.get(ROCKSDB_ROOT_DIR);
