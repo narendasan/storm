@@ -105,7 +105,16 @@ public class RocksDBMetricStore implements MetricStore {
         try {
             store.put(key.getBytes(), data);
         } catch (Exception e) {
-            System.out.Println("Failed to store value of " + key); //ASK: Is there a storm logger?
+            System.out.Println("Failed to store " + key); //ASK: Is there a storm logger?
+        }
+    }
+
+    @Override
+    public void remove(String key) {
+        try {
+            store.remove(key.getBytes());
+        } catch (Exception e) {
+            System.out.Println("Failed to remove " + key); //ASK: Is there a storm logger?
         }
     }
 

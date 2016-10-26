@@ -31,4 +31,5 @@ public interface MetricStore extends Serializable {
 
     void put(String key, Object value);
 
+    void remove(String key);
 }
