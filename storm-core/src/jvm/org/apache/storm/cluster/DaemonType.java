@@ -25,6 +25,3 @@ public enum DaemonType {
     PACEMAKER,
     UNKNOWN
 }
-
-public class foo extends INimbus {
-}
