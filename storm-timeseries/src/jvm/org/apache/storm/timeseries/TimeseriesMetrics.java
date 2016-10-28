@@ -20,24 +20,47 @@ package org.apache.storm.timeseries;
 import org.rocksdb.RocksDB;
 import org.rocksdb.Options;
 
+import org.apache.storm.store;
+
+//TODO: LOOK AT JStormMetricsCache
+
+
 /**
  *    This class looks to implement a first version of a metric store
  **/
 public class TimeseriesMetrics {
-    /**
-     * Creates the RocksDB instance to store metrics from Nimbus
-     * @param list of timestamps
-     **/
-    public void initDB(List<Integer> list) throws Exception {
-        //TODO: CHANGE THIS TO THE STORM LOGGER IF THERE IS ONE
-        System.out.Println("Intializing Metrics DB");
 
-        DBOptions dbOptions = null;
-        List<ColumnFamilyDescriptior> columnFamilyNames = new ArrayList<ColumnFamilyDescriptior>();
-        columnFamilyNames.add(new ColumnFamilyDescriptior(RocksDB.DEFAULT_COLUMN_FAMILY));
-        for (Integer timeout : list) {
-            columnFamilyNames.add(new ColumnFamilyDescriptor(String.valueOf(timeout).getBytes()));
+    private static final Logger LOG = LoggerFactory.getLogger(TimeseriesMetrics.class);
+
+    protected MetricStore TimeseriesMetricsStore = null;
+
+    public TimeseriesMetrics() {
+        /* TODO; CREATE A RocksDBMetricStore then store in MetricStore */
+        LOG.info("Creating a RocksDB store for TimeseriesMetrics");
+
+        try {
+            TimeseriesMetricsStore.init(/* Fill in conf parameters*/);
+        } catch {
+            LOG.error("Failed to create a RocksDB Store");
         }
     }
 
+    public MetricStore getStore() {
+        return TimeseriesMetricsStore;
+    }
+
+    //ASK: ARE THESE FUNCTIONS NECESSARY?
+    public Object get(String k) {
+        return TimeseriesMetricsStore.get(k);
+    }
+
+    public void put(String k, Object v) {
+        TimeseriesMetricsStore.put(k,v);
+        return;
+    }
+
+    public void remove(String k) {
+        TimeseriesMetricsStore.remove(k);
+        return;
+    }
 }
