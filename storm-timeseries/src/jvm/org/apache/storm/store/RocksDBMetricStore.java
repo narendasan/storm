@@ -32,6 +32,7 @@ public class RocksDBMetricStore implements MetricStore {
         RocksDB.loadLibrary();
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger(RocksDBMetricStore.class);
     public static final String ROCKSDB_ROOT_DIR = "rocksdb.root.dir";
     public static final String ROCKSDB_RESET = "rocksdb.reset";
     private static final String MAX_CREATE_RETRIES = 3;
@@ -60,7 +61,7 @@ public class RocksDBMetricStore implements MetricStore {
                 initDb(list);
                 succeeded = true;
             } catch (Exception e) {
-                System.out.Println("Failed to initize RocksDB in " + rootDir + "(Try " + i + " of " + MAX_CREATE_RETRIES + ")"); //ASK: Is there a storm logger?
+                LOG.warn("Failed to initize RocksDB in " + rootDir + "(Try " + i + " of " + MAX_CREATE_RETRIES + ")", e);
                 try {
                      PathUtils.rmr(rootDir);
                 } catch (IOException ignore) {}
@@ -74,11 +75,11 @@ public class RocksDBMetricStore implements MetricStore {
 
     @Override
     public void teardown() {
-        System.out.Println("Begin teardown of RocksDB in " + rootDir); //ASK: Is there a storm logger?
+        LOG.info("Begin teardown of RocksDB in " + rootDir); //ASK: Is there a storm logger?
         if (store != null) {
             store.close();
         }
-        System.out.Println("Finished teardown of RocksDB in " + rootDir); //ASK: Is there a storm logger?
+        LOG.info("Finished teardown of RocksDB in " + rootDir); //ASK: Is there a storm logger?
     }
 
     @Override
@@ -87,9 +88,9 @@ public class RocksDBMetricStore implements MetricStore {
             byte[] data = db.get(key.getBytes());
             if (data != null) {
                 try {
-                    return Utils.javaDeserialize(data);
+                    return Utils.javaDeserialize(data); //TODO: DROP SERIALIZATION
                 } catch (Exception e) {
-                    System.out.Println("Failed to deserialize value of " + key); //ASK: Is there a storm logger?
+                    LOG.error("Failed to retrive value of " + key);
                     store.remove(key.getBytes());
                     return null;
                 }
@@ -101,11 +102,11 @@ public class RocksDBMetricStore implements MetricStore {
 
     @Override
     public void put(String key, Object value) {
-        byte[] data = Utils.javaSerialize(value);
+        byte[] data = Utils.javaSerialize(value); //TODO DROP SERIALIZATION
         try {
             store.put(key.getBytes(), data);
         } catch (Exception e) {
-            System.out.Println("Failed to store " + key); //ASK: Is there a storm logger?
+            LOG.error("Failed to store " + key);
         }
     }
 
@@ -114,19 +115,19 @@ public class RocksDBMetricStore implements MetricStore {
         try {
             store.remove(key.getBytes());
         } catch (Exception e) {
-            System.out.Println("Failed to remove " + key); //ASK: Is there a storm logger?
+            LOG.error("Failed to remove " + key);
         }
     }
 
     /* Setup the root directory for RocksDB*/
-    public void initDir(Map<Object, Object> config) {
+    private void initDir(Map<Object, Object> config) {
         String configDir = (String) config.get(ROCKSDB_ROOT_DIR);
         if (StringUtils.isBlank(configDir) == true) {
             throw new RuntimeException("Failed get a valid root directory for RocksDB");
         }
 
         boolean clean = (boolean) config.get(ROCKSDB_RESET);
-        System.out.Println("RocksDB reset is " + clean); //ASK: Is there a storm logger?
+        LOG.info("RocksDB reset is " + clean);
         if (clean == true) {
             try {
                 PathUtils.rmr(configDir);
@@ -148,15 +149,15 @@ public class RocksDBMetricStore implements MetricStore {
         rootDir = file.getAbsolutePath();
     }
 
-    public void initDB(List<Integer> list) throws Exception {
-        System.out.Println("Initializing RocksDB in " + rootDir); //ASK: Is there a storm logger?
+    private void initDB(List<Integer> list) throws Exception {
+        LOG.info("Initializing RocksDB in " + rootDir);
 
         Options rocksDBOptions = null;
         try {
             rocksDBOptions = new Options().setCreateMissingColumnFamilies(true).setCreateIfMissing(true);
             List<ColumnFamilyHandler> ColumnFamilyHandleList = new ArrayList<ColumnFamilyHandle>();
             store = RocksDB.open(rocksDBOptions, rootDir);
-            System.out.Println("Successful Initialization of RocksDB in " + rootDir); //ASK: Is there a storm logger?
+            LOG.info("Successful Initialization of RocksDB in " + rootDir);
         } finally {
             if (rocksDBOptions != null) {
                 rocksDBOptions.dispose();

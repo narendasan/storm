@@ -15,4 +15,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- package org.apache.storm.timeseries;
+package org.apache.storm.timeseries;
+
+import org.rocksdb.RocksDB;
+import org.rocksdb.Options;
+
+/**
+ *    This class looks to implement a first version of a metric store
+ **/
+public class TimeseriesMetrics {
+    /**
+     * Creates the RocksDB instance to store metrics from Nimbus
+     * @param list of timestamps
+     **/
+    public void initDB(List<Integer> list) throws Exception {
+        //TODO: CHANGE THIS TO THE STORM LOGGER IF THERE IS ONE
+        System.out.Println("Intializing Metrics DB");
+
+        DBOptions dbOptions = null;
+        List<ColumnFamilyDescriptior> columnFamilyNames = new ArrayList<ColumnFamilyDescriptior>();
+        columnFamilyNames.add(new ColumnFamilyDescriptior(RocksDB.DEFAULT_COLUMN_FAMILY));
+        for (Integer timeout : list) {
+            columnFamilyNames.add(new ColumnFamilyDescriptor(String.valueOf(timeout).getBytes()));
+        }
+    }
+
+}
