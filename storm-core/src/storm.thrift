@@ -455,6 +455,26 @@ struct SupervisorInfo {
     9: optional map<string, double> resources_map;
 }
 
+//TODO: not LS?
+struct LSWorkerStats {
+   // TODO: does this need to be a range?
+   1: optional i64 time_stamp;
+   2: optional map<string, double> metrics;
+}
+
+struct WorkerStats {
+    1: optional i64 port;
+    2: optional string storm_id;
+    3: optional map<i64, LSWorkerStats> metrics;
+    4: optional list<ExecutorInfo> executor_infos;
+}
+
+struct SupervisorWorkerStats {
+    1: optional string supervisor_host;
+    2: optional string supervisor_id;
+    3: optional map<string, WorkerStats> worker_stats;
+}
+
 struct NodeInfo {
     1: required string node;
     2: required set<i64> port;
@@ -538,6 +558,7 @@ struct LSWorkerHeartbeat {
    4: required i32 port;
 }
 
+
 struct LSTopoHistory {
    1: required string topology_id;
    2: required i64 time_stamp;
@@ -620,6 +641,7 @@ service Nimbus {
   void rebalance(1: string name, 2: RebalanceOptions options) throws (1: NotAliveException e, 2: InvalidTopologyException ite, 3: AuthorizationException aze);
 
   void consumeMetric(1: string name, 2: double value);
+  void consumeWorkerStats(1: SupervisorWorkerStats stats);
 
   // dynamic log levels
   void setLogConfig(1: string name, 2: LogConfig config);

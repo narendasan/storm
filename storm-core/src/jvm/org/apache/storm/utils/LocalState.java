@@ -24,6 +24,7 @@ import org.apache.storm.generated.LSSupervisorId;
 import org.apache.storm.generated.LSTopoHistory;
 import org.apache.storm.generated.LSTopoHistoryList;
 import org.apache.storm.generated.LSWorkerHeartbeat;
+import org.apache.storm.generated.LSWorkerStats;
 import org.apache.storm.generated.LocalAssignment;
 import org.apache.storm.generated.LocalStateData;
 import org.apache.storm.generated.ThriftSerializedObject;
@@ -48,15 +49,18 @@ import java.util.Map;
 public class LocalState {
     public static final Logger LOG = LoggerFactory.getLogger(LocalState.class);
     public static final String LS_WORKER_HEARTBEAT = "worker-heartbeat";
+    public static final String LS_WORKER_STATS = "worker-stats";
     public static final String LS_ID = "supervisor-id";
     public static final String LS_LOCAL_ASSIGNMENTS = "local-assignments";
     public static final String LS_APPROVED_WORKERS = "approved-workers";
     public static final String LS_TOPO_HISTORY = "topo-hist";
     private VersionedStore _vs;
+    private TimeseriesStore _ts;
     
     public LocalState(String backingDir) throws IOException {
         LOG.debug("New Local State for {}", backingDir);
         _vs = new VersionedStore(backingDir);
+        _ts = new TimeseriesStore(backingDir + "/../stats/");
     }
 
     public synchronized Map<String, TBase> snapshot() {
@@ -149,7 +153,7 @@ public class LocalState {
         Map<String, ThriftSerializedObject> curr = partialSnapshot(null);
         TSerializer ser = new TSerializer();
         curr.put(key, serialize(val, ser));
-        persistInternal(curr, ser, cleanup);
+        persistInternal(key, curr, ser, cleanup);
     }
 
     public void remove(String key) {
@@ -159,7 +163,7 @@ public class LocalState {
     public synchronized void remove(String key, boolean cleanup) {
         Map<String, ThriftSerializedObject> curr = partialSnapshot(null);
         curr.remove(key);
-        persistInternal(curr, null, cleanup);
+        persistInternal(key, curr, null, cleanup);
     }
 
     public synchronized void cleanup(int keepVersions) throws IOException {
@@ -233,6 +237,10 @@ public class LocalState {
         put(LS_WORKER_HEARTBEAT, workerHeartBeat, false);
     }
 
+    public void setWorkerStats(LSWorkerStats workerStats) {
+        put(LS_WORKER_STATS, workerStats, false);
+    }
+
     public Map<Integer, LocalAssignment> getLocalAssignmentsMap() {
         LSSupervisorAssignments assignments = (LSSupervisorAssignments) get(LS_LOCAL_ASSIGNMENTS);
         if (null != assignments) {
@@ -245,14 +253,14 @@ public class LocalState {
         put(LS_LOCAL_ASSIGNMENTS, new LSSupervisorAssignments(localAssignmentMap));
     }
 
-    private void persistInternal(Map<String, ThriftSerializedObject> serialized, TSerializer ser, boolean cleanup) {
+    private void persistInternal(String key, Map<String, ThriftSerializedObject> serialized, TSerializer ser, boolean cleanup) {
         try {
             if (ser == null) {
                 ser = new TSerializer();
             }
             byte[] toWrite = ser.serialize(new LocalStateData(serialized));
 
-            String newPath = _vs.createVersion();
+            String newPath = key == LS_WORKER_STATS ? _ts.createVersion() : _vs.createVersion();
             File file = new File(newPath);
             FileUtils.writeByteArrayToFile(file, toWrite);
             if (toWrite.length != file.length()) {
@@ -260,8 +268,14 @@ public class LocalState {
                         " bytes to " + file.getCanonicalPath() + ", but " +
                         file.length() + " bytes were written.");
             }
-            _vs.succeedVersion(newPath);
-            if(cleanup) _vs.cleanup(4);
+            if (key == LS_WORKER_STATS) {
+                _ts.succeedVersion(newPath);
+                if(cleanup) _ts.cleanup(4);
+                // time series cleaned up by supervisor
+            } else {
+                _vs.succeedVersion(newPath);
+                if(cleanup) _vs.cleanup(4);
+            }
         } catch(Exception e) {
             throw new RuntimeException(e);
         }

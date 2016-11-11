@@ -19,8 +19,11 @@ package org.apache.storm.localizer;
 
 import java.io.IOException;
 import java.util.concurrent.Future;
+import java.util.Map;
 
 import org.apache.storm.generated.LocalAssignment;
+import org.apache.storm.generated.LSWorkerStats;
+import org.apache.storm.generated.SupervisorWorkerStats;
 
 /**
  * Download blobs from the blob store and keep them up to date.
@@ -67,4 +70,10 @@ public interface ILocalizer {
      * @throws IOException on any error.
      */
     void cleanupUnusedTopologies() throws IOException;
+
+    //void putWorkerStats(Integer port, LSWorkerStats ws);
+
+    //Map<Integer, LSWorkerStats> getWorkerStats();
+
+    //void sendWorkerStatsToNimbus(SupervisorWorkerStats superWorkerStats);
 }

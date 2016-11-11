@@ -73,6 +73,8 @@ public interface IStormClusterState {
 
     public Map<ExecutorInfo, ExecutorBeat> executorBeats(String stormId, Map<List<Long>, NodeInfo> executorNodePort);
 
+    //public ... workerStats(String stormId, Map<List<Long>, NodeInfo> executorNodePort);
+
     public List<String> supervisors(Runnable callback);
 
     public SupervisorInfo supervisorInfo(String supervisorId); // returns nil if doesn't exist

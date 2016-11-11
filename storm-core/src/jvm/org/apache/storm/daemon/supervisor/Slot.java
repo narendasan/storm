@@ -33,6 +33,7 @@ import org.apache.storm.Config;
 import org.apache.storm.cluster.IStormClusterState;
 import org.apache.storm.generated.ExecutorInfo;
 import org.apache.storm.generated.LSWorkerHeartbeat;
+import org.apache.storm.generated.LSWorkerStats;
 import org.apache.storm.generated.LocalAssignment;
 import org.apache.storm.generated.ProfileAction;
 import org.apache.storm.generated.ProfileRequest;
@@ -532,6 +533,7 @@ public class Slot extends Thread implements AutoCloseable {
         }
         
         LSWorkerHeartbeat hb = dynamicState.container.readHeartbeat();
+
         if (hb == null) {
             LOG.warn("SLOT {}: HB returned as null", staticState.port);
             //This can happen if the supervisor crashed after launching a
@@ -593,6 +595,9 @@ public class Slot extends Thread implements AutoCloseable {
             }
             dynamicState = dynamicState.withProfileActions(mod, modPending);
         }
+        
+        dynamicState.container.readStats();
+
         Time.sleep(staticState.monitorFreqMs);
         return dynamicState;
     }

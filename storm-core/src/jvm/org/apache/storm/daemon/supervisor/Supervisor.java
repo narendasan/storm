@@ -39,10 +39,12 @@ import org.apache.storm.cluster.IStormClusterState;
 import org.apache.storm.daemon.DaemonCommon;
 import org.apache.storm.daemon.supervisor.timer.SupervisorHealthCheck;
 import org.apache.storm.daemon.supervisor.timer.SupervisorHeartbeat;
+import org.apache.storm.daemon.supervisor.timer.WorkerStatsTimer;
 import org.apache.storm.daemon.supervisor.timer.UpdateBlobs;
 import org.apache.storm.event.EventManager;
 import org.apache.storm.event.EventManagerImp;
 import org.apache.storm.generated.LocalAssignment;
+import org.apache.storm.generated.LSWorkerStats;
 import org.apache.storm.localizer.AsyncLocalizer;
 import org.apache.storm.localizer.ILocalizer;
 import org.apache.storm.localizer.Localizer;
@@ -76,6 +78,7 @@ public class Supervisor implements DaemonCommon, AutoCloseable {
     private final StormTimer heartbeatTimer;
     private final StormTimer eventTimer;
     private final StormTimer blobUpdateTimer;
+    private final StormTimer statsTimer;
     private final Localizer localizer;
     private final ILocalizer asyncLocalizer;
     private EventManager eventManager;
@@ -130,6 +133,8 @@ public class Supervisor implements DaemonCommon, AutoCloseable {
         this.eventTimer = new StormTimer(null, new DefaultUncaughtExceptionHandler());
 
         this.blobUpdateTimer = new StormTimer("blob-update-timer", new DefaultUncaughtExceptionHandler());
+
+        this.statsTimer = new StormTimer("stats-timer", new DefaultUncaughtExceptionHandler());
     }
     
     public String getId() {
@@ -160,7 +165,7 @@ public class Supervisor implements DaemonCommon, AutoCloseable {
         return stormClusterState;
     }
 
-    LocalState getLocalState() {
+    public LocalState getLocalState() {
         return localState;
     }
 
@@ -200,11 +205,16 @@ public class Supervisor implements DaemonCommon, AutoCloseable {
 
         SupervisorHeartbeat hb = new SupervisorHeartbeat(conf, this);
         hb.run();
+
+        //WorkerStats ws = new WorkerStats(conf, this);
+        //ws.run();
+
         // should synchronize supervisor so it doesn't launch anything after being down (optimization)
         Integer heartbeatFrequency = Utils.getInt(conf.get(Config.SUPERVISOR_HEARTBEAT_FREQUENCY_SECS));
         heartbeatTimer.scheduleRecurring(0, heartbeatFrequency, hb);
 
         this.eventManager = new EventManagerImp(false);
+        // This synchronizes the supervisor slots and assignments
         this.readState = new ReadClusterState(this);
         
         Set<String> downloadedTopoIds = SupervisorUtils.readDownloadedTopologyIds(conf);
@@ -215,6 +225,7 @@ public class Supervisor implements DaemonCommon, AutoCloseable {
         localizer.startCleaner();
 
         UpdateBlobs updateBlobsThread = new UpdateBlobs(this);
+        WorkerStatsTimer statsThread = new WorkerStatsTimer(conf, this);
 
         if ((Boolean) conf.get(Config.SUPERVISOR_ENABLE)) {
             // This isn't strictly necessary, but it doesn't hurt and ensures that the machine stays up
@@ -223,6 +234,9 @@ public class Supervisor implements DaemonCommon, AutoCloseable {
 
             // Blob update thread. Starts with 30 seconds delay, every 30 seconds
             blobUpdateTimer.scheduleRecurring(30, 30, new EventManagerPushCallback(updateBlobsThread, eventManager));
+
+            // do this once a second for now
+            statsTimer.scheduleRecurring(0, 1, new EventManagerPushCallback(statsThread, eventManager));
 
             // supervisor health check
             eventTimer.scheduleRecurring(300, 300, new SupervisorHealthCheck(this));
@@ -268,6 +282,7 @@ public class Supervisor implements DaemonCommon, AutoCloseable {
             heartbeatTimer.close();
             eventTimer.close();
             blobUpdateTimer.close();
+            statsTimer.close();
             if (eventManager != null) {
                 eventManager.close();
             }

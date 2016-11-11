@@ -17,6 +17,7 @@
  */
 package org.apache.storm.utils;
 
+import org.apache.storm.metric.StatsPusher;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;

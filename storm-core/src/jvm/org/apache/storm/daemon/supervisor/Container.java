@@ -34,12 +34,14 @@ import java.util.Set;
 
 import org.apache.storm.Config;
 import org.apache.storm.container.ResourceIsolationInterface;
+import org.apache.storm.generated.LSWorkerStats;
 import org.apache.storm.generated.LSWorkerHeartbeat;
 import org.apache.storm.generated.LocalAssignment;
 import org.apache.storm.generated.ProfileRequest;
 import org.apache.storm.utils.ConfigUtils;
 import org.apache.storm.utils.LocalState;
 import org.apache.storm.utils.Utils;
+import org.apache.storm.metric.StatsPusher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -204,6 +206,13 @@ public abstract class Container implements Killable {
         LSWorkerHeartbeat hb = localState.getWorkerHeartBeat();
         LOG.trace("{}: Reading heartbeat {}", _workerId, hb);
         return hb;
+    }
+
+    public void readStats() throws IOException {
+        //LocalState localState = ConfigUtils.workerState(_conf, _workerId);
+        //List<LSWorkerStats> stats = localState.getWorkerStats();
+        //LOG.info("{}: Reading stats {}", _workerId, stats);
+        //_statsPusher.sendWorkerStatsToNimbus(stats);
     }
 
     /**

@@ -45,6 +45,11 @@ import org.apache.storm.utils.ConfigUtils;
 import org.apache.storm.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import org.apache.storm.generated.LSWorkerStats;
+import org.apache.storm.generated.SupervisorWorkerStats;
+import org.apache.storm.metric.StatsPusher;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
@@ -94,6 +99,7 @@ public class AsyncLocalizer implements ILocalizer, Shutdownable {
     private final Map<String, LocalDownloadedResource> _basicPending;
     private final Map<String, LocalDownloadedResource> _blobPending;
     private final AdvancedFSOps _fsOps;
+
 
     private class DownloadBaseBlobsDistributed implements Callable<Void> {
         protected final String _topologyId;
