@@ -111,6 +111,47 @@ public class StormMetricReporter extends ScheduledReporter {
                 }
             }
         }
+        if (histograms != null) {
+            for (Map.Entry<String, Histogram> c : histograms.entrySet()) {
+                String key = c.getKey();
+                Histogram t = c.getValue();
+                double count = t.getCount();
+                Snapshot snap = t.getSnapshot();
+                double pct75  = snap.get75thPercentile();
+                double pct95  = snap.get95thPercentile();
+                double pct98  = snap.get98thPercentile();
+                double pct99  = snap.get99thPercentile();
+                double pct999 = snap.get999thPercentile();
+                long max      = snap.getMax();
+                long min      = snap.getMin();
+                double means  = snap.getMean();
+                double median = snap.getMedian();
+                double stddev = snap.getStdDev();
+                long[] vals   = snap.getValues();
+
+                workerStats.put_to_metrics(key + "--pct75" , new Double(pct75));
+                workerStats.put_to_metrics(key + "--pct95" , new Double(pct95));
+                workerStats.put_to_metrics(key + "--pct98" , new Double(pct98));
+                workerStats.put_to_metrics(key + "--pct99" , new Double(pct99));
+                workerStats.put_to_metrics(key + "--pct999", new Double(pct999));
+                workerStats.put_to_metrics(key + "--max"   , new Double(max));
+                workerStats.put_to_metrics(key + "--min"   , new Double(min));
+                workerStats.put_to_metrics(key + "--means" , new Double(means));
+                workerStats.put_to_metrics(key + "--median", new Double(median));
+                workerStats.put_to_metrics(key + "--stddev", new Double(stddev));
+                for (int i = 0; i < vals.length; i++){
+                    workerStats.put_to_metrics(key + "--vals" + i,   new Double(vals[i]));
+                }
+
+                try {
+                    client.consumeMetric(key, count);
+                } catch (TException ex){
+                    LOG.error("TException consuming: {}", ex);
+                } catch (Exception ex){
+                    LOG.error("Exception consuming: {}", ex);
+                }
+            }
+        }
         if (timers != null) {
             for (Map.Entry<String, Timer> c : timers.entrySet()) {
                 String key = c.getKey();

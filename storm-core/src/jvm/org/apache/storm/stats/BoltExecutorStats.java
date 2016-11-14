@@ -28,9 +28,16 @@ import org.apache.storm.metric.internal.MultiLatencyStatAndMetric;
 import org.apache.storm.metric.StormMetricRegistry;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Timer;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Reservoir;
+import com.codahale.metrics.SlidingTimeWindowReservoir;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import java.util.Map;
+import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 @SuppressWarnings("unchecked")
 public class BoltExecutorStats extends CommonStats {
@@ -39,9 +46,12 @@ public class BoltExecutorStats extends CommonStats {
     public static final String EXECUTED = "executed";
     public static final String PROCESS_LATENCIES = "process-latencies";
     public static final String EXECUTE_LATENCIES = "execute-latencies";
+    private Map<String, AtomicLong> debugCounters;
 
     public BoltExecutorStats(StormMetricRegistry metrics, int rate) {
         super(metrics, rate);
+
+        this.debugCounters = new HashMap<String, AtomicLong>();
 
         this.put(ACKED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
         this.put(FAILED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
@@ -88,13 +98,36 @@ public class BoltExecutorStats extends CommonStats {
         return result;
     }
 
+    private Histogram getHistogram(String component, String stream, String metricName){
+        String fqMeterName = this.metrics.scopedName(component, stream, metricName);
+        Histogram result = this.metrics.getHistograms().get(fqMeterName);
+        if (result == null) {
+            Reservoir reservoir = new SlidingTimeWindowReservoir(1, TimeUnit.MINUTES);
+            result = new Histogram(reservoir);
+            return this.metrics.register(fqMeterName, result);
+        }
+        return result;
+    }
+
     public void boltExecuteTuple(String component, String stream, long latencyMs) {
         List key = Lists.newArrayList(component, stream);
         this.getExecuted().incBy(key, this.rate);
         this.getExecuteLatencies().record(key, latencyMs);
 
         this.getCounter(component, stream, EXECUTED).inc(this.rate);
-        this.getTimer(component, stream, EXECUTE_LATENCIES).update(latencyMs, TimeUnit.MILLISECONDS);
+        //this.getTimer(component, stream, EXECUTE_LATENCIES).update(latencyMs, TimeUnit.MILLISECONDS);
+        this.getHistogram(component, stream, EXECUTE_LATENCIES).update(latencyMs);
+        this.debugSeries(component, stream);
+    }
+
+    private void debugSeries(String component, String stream){
+        long time = System.currentTimeMillis();
+        AtomicLong value = this.debugCounters.get(component + stream);
+        if (value == null) {
+            value = new AtomicLong(time);
+        }
+        value.set(time);
+        this.getHistogram(component, stream, "debug").update(time);
     }
 
     public void boltAckedTuple(String component, String stream, long latencyMs) {
@@ -103,7 +136,8 @@ public class BoltExecutorStats extends CommonStats {
         this.getProcessLatencies().record(key, latencyMs);
 
         this.getCounter(component, stream, ACKED).inc(this.rate);
-        this.getTimer(component, stream, PROCESS_LATENCIES).update(latencyMs, TimeUnit.MILLISECONDS);
+        //this.getTimer(component, stream, PROCESS_LATENCIES).update(latencyMs, TimeUnit.MILLISECONDS);
+        this.getHistogram(component, stream, PROCESS_LATENCIES).update(latencyMs);
     }
 
     public void boltFailedTuple(String component, String stream, long latencyMs) {
