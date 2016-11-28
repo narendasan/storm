@@ -48,8 +48,8 @@ public class BoltExecutorStats extends CommonStats {
     public static final String EXECUTE_LATENCIES = "execute-latencies";
     private Map<String, AtomicLong> debugCounters;
 
-    public BoltExecutorStats(StormMetricRegistry metrics, int rate) {
-        super(metrics, rate);
+    public BoltExecutorStats(List<Long> executorId, StormMetricRegistry metrics, int rate) {
+        super(executorId, metrics, rate);
 
         this.debugCounters = new HashMap<String, AtomicLong>();
 
@@ -78,35 +78,6 @@ public class BoltExecutorStats extends CommonStats {
 
     public MultiLatencyStatAndMetric getExecuteLatencies() {
         return (MultiLatencyStatAndMetric) this.get(EXECUTE_LATENCIES);
-    }
-   
-    private Counter getCounter(String component, String stream, String metricName){
-        String fqMeterName = this.metrics.scopedName(component, stream, metricName);
-        Counter result = this.metrics.getCounters().get(fqMeterName);
-        if (result == null) {
-            return this.metrics.counter(fqMeterName);
-        }
-        return result;
-    }
-
-    private Timer getTimer(String component, String stream, String metricName){
-        String fqMeterName = this.metrics.scopedName(component, stream, metricName);
-        Timer result = this.metrics.getTimers().get(fqMeterName);
-        if (result == null) {
-            return this.metrics.timer(fqMeterName);
-        }
-        return result;
-    }
-
-    private Histogram getHistogram(String component, String stream, String metricName){
-        String fqMeterName = this.metrics.scopedName(component, stream, metricName);
-        Histogram result = this.metrics.getHistograms().get(fqMeterName);
-        if (result == null) {
-            Reservoir reservoir = new SlidingTimeWindowReservoir(1, TimeUnit.MINUTES);
-            result = new Histogram(reservoir);
-            return this.metrics.register(fqMeterName, result);
-        }
-        return result;
     }
 
     public void boltExecuteTuple(String component, String stream, long latencyMs) {

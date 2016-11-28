@@ -25,6 +25,10 @@ import org.apache.storm.metric.internal.MultiLatencyStatAndMetric;
 
 import org.apache.storm.metric.StormMetricRegistry;
 
+import com.codahale.metrics.Counter;
+
+import java.util.List;
+
 @SuppressWarnings("unchecked")
 public class SpoutExecutorStats extends CommonStats {
 
@@ -32,8 +36,8 @@ public class SpoutExecutorStats extends CommonStats {
     public static final String FAILED = "failed";
     public static final String COMPLETE_LATENCIES = "complete-latencies";
 
-    public SpoutExecutorStats(StormMetricRegistry metrics, int rate) {
-        super(metrics, rate);
+    public SpoutExecutorStats(List<Long> executorId, StormMetricRegistry metrics, int rate) {
+        super(executorId, metrics, rate);
         this.put(ACKED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
         this.put(FAILED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
         this.put(COMPLETE_LATENCIES, new MultiLatencyStatAndMetric(NUM_STAT_BUCKETS));
@@ -53,11 +57,13 @@ public class SpoutExecutorStats extends CommonStats {
 
     public void spoutAckedTuple(String stream, long latencyMs) {
         this.getAcked().incBy(stream, this.rate);
+        this.getCounter("common", stream, ACKED).inc(this.rate);
         this.getCompleteLatencies().record(stream, latencyMs);
     }
 
     public void spoutFailedTuple(String stream, long latencyMs) {
         this.getFailed().incBy(stream, this.rate);
+        this.getCounter("common", stream, FAILED).inc(this.rate);
     }
 
     @Override

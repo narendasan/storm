@@ -18,6 +18,7 @@
 package org.apache.storm.stats;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.storm.generated.ExecutorStats;
 import org.apache.storm.metric.api.IMetric;
@@ -27,6 +28,11 @@ import org.apache.storm.metric.StormMetricRegistry;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Reservoir;
+import com.codahale.metrics.SlidingTimeWindowReservoir;
+import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("unchecked")
 public abstract class CommonStats {
@@ -38,6 +44,8 @@ public abstract class CommonStats {
     public static final String TRANSFERRED = "transferred";
     public static final String[] COMMON_FIELDS = {EMITTED, TRANSFERRED};
 
+    protected final String executorIdStr;
+
     protected final int rate;
     protected final Map<String, IMetric> metricMap = new HashMap<>();
 
@@ -45,8 +53,9 @@ public abstract class CommonStats {
 
     protected StormMetricRegistry metrics;
 
-    public CommonStats(StormMetricRegistry metrics, int rate) {
+    public CommonStats(List<Long> executorId, StormMetricRegistry metrics, int rate) {
         this.rate = rate;
+        this.executorIdStr = "[" + executorId.get(0) + "-" + executorId.get(1) + "]";
         this.put(EMITTED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
         this.put(TRANSFERRED, new MultiCountStatAndMetric(NUM_STAT_BUCKETS));
         this.metrics = metrics;
@@ -78,10 +87,34 @@ public abstract class CommonStats {
     }
    
     private Counter getCounter(String stream, String metricName){
-        String fqMeterName = this.metrics.scopedName(stream, metricName);
+        return getCounter("common", stream, metricName);
+    }
+
+    protected Counter getCounter(String component, String stream, String metricName){
+        String fqMeterName = this.metrics.scopedName(executorIdStr, stream, component, metricName);
         Counter result = this.metrics.getCounters().get(fqMeterName);
         if (result == null) {
             return this.metrics.counter(fqMeterName);
+        }
+        return result;
+    }
+
+    protected Timer getTimer(String component, String stream, String metricName){
+        String fqMeterName = this.metrics.scopedName(this.executorIdStr, stream, component, metricName);
+        Timer result = this.metrics.getTimers().get(fqMeterName);
+        if (result == null) {
+            return this.metrics.timer(fqMeterName);
+        }
+        return result;
+    }
+
+    protected Histogram getHistogram(String component, String stream, String metricName){
+        String fqMeterName = this.metrics.scopedName(this.executorIdStr, stream, component, metricName);
+        Histogram result = this.metrics.getHistograms().get(fqMeterName);
+        if (result == null) {
+            Reservoir reservoir = new SlidingTimeWindowReservoir(1, TimeUnit.MINUTES);
+            result = new Histogram(reservoir);
+            return this.metrics.register(fqMeterName, result);
         }
         return result;
     }

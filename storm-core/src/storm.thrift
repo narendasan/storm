@@ -466,6 +466,7 @@ struct WorkerStats {
     1: optional i64 port;
     2: optional string storm_id;
     3: optional map<i64, LSWorkerStats> metrics;
+   // TODO: is this necessary?
     4: optional list<ExecutorInfo> executor_infos;
 }
 

@@ -136,7 +136,6 @@ public class WorkerStatsTimer implements Runnable {
         LocalState localState = supervisor.getLocalState();
         Map<Integer, LocalAssignment> localAssignment = localState.getLocalAssignmentsMap();
         Map<String, Integer> approvedWorkers = localState.getApprovedWorkers();
-        System.out.println(approvedWorkers);
         if (approvedWorkers == null) {
             return;
         }
@@ -153,7 +152,6 @@ public class WorkerStatsTimer implements Runnable {
 
                 Integer port = approvedWorkers.get(workerId);
                 List<LSWorkerStats> stats = this.getWorkerStats(ts);
-                System.out.println("LSWORKERSTATS" + stats);
 
                 LocalAssignment workerAssignment = localAssignment.get(port);
                 if (workerAssignment == null) {
@@ -172,7 +170,6 @@ public class WorkerStatsTimer implements Runnable {
             }catch (IOException ex) {System.out.println(ex);}
         }
 
-        System.out.println(supervisorWorkerStats);
         statsPusher.sendWorkerStatsToNimbus(supervisorWorkerStats);
     }
 }

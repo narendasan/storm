@@ -20,6 +20,7 @@ package org.apache.storm.metric;
 import java.util.concurrent.TimeUnit;
 import java.util.SortedMap;
 import java.util.Map;
+import java.util.HashMap;
 
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Gauge;
@@ -30,6 +31,7 @@ import com.codahale.metrics.Timer;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Snapshot;
+import com.codahale.metrics.MetricRegistryListener;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -57,10 +59,51 @@ public class StormMetricReporter extends ScheduledReporter {
 
     private static final Logger LOG = LoggerFactory.getLogger(StormMetricReporter.class);
 
+    private Map<String, Long> counterCache;
+
     public StormMetricReporter(MetricRegistry registry, LocalState state, String stormId, int port,
                                String name, MetricFilter filter, 
                                TimeUnit rateUnit, TimeUnit durationUnit) throws org.apache.thrift.transport.TTransportException {
         super(registry, name, filter, rateUnit, durationUnit);
+
+        counterCache = new HashMap<String, Long>();
+
+        // compute cache
+        registry.addListener(new MetricRegistryListener() {
+            @Override
+            public void onCounterRemoved(String name){
+                counterCache.remove(name);
+            }
+
+            @Override
+            public void onCounterAdded(String name, Counter counter){
+                counterCache.put(name, new Long(0)); // always start this at 0, the report function updates
+            }
+
+            @Override
+            public void onGaugeAdded(String name, Gauge<?> gauge) {}
+
+            @Override
+            public void onGaugeRemoved(String name) {}
+
+            @Override
+            public void onHistogramAdded(String name, Histogram hist) {}
+
+            @Override
+            public void onHistogramRemoved(String name) {}
+
+            @Override
+            public void onMeterAdded(String name, Meter meter) {}
+
+            @Override
+            public void onMeterRemoved(String name) {}
+
+            @Override
+            public void onTimerAdded(String name, Timer timer) {}
+
+            @Override
+            public void onTimerRemoved(String name) {}
+        });
 
         this.state = state;
         this.stormId = stormId;
@@ -99,16 +142,19 @@ public class StormMetricReporter extends ScheduledReporter {
             for (Map.Entry<String, Counter> c : counters.entrySet()) {
                 String key = c.getKey();
                 long count = c.getValue().getCount();
-                workerStats.set_time_stamp(_reportTime);
-                workerStats.put_to_metrics(key, new Double(count));
+                // check the cache to see if the value changed
+                long oldCount = counterCache.get(key);
 
-                try {
-                    client.consumeMetric(key, count);
-                } catch (TException ex){
-                    LOG.error("TException consuming: {}", ex);
-                } catch (Exception ex){
-                    LOG.error("Exception consuming: {}", ex);
-                }
+                // report the delta between the old count and the new count
+                // if count is positive, take diff
+                // oldCount is always <= count (counters are always increasing)
+                long reportCount = count > 0 ? count - oldCount : 0;
+
+                // for the next call
+                counterCache.put(key, count);
+
+                workerStats.set_time_stamp(_reportTime);
+                workerStats.put_to_metrics(key, new Double(reportCount));
             }
         }
         if (histograms != null) {
@@ -129,27 +175,19 @@ public class StormMetricReporter extends ScheduledReporter {
                 double stddev = snap.getStdDev();
                 long[] vals   = snap.getValues();
 
-                workerStats.put_to_metrics(key + "--pct75" , new Double(pct75));
-                workerStats.put_to_metrics(key + "--pct95" , new Double(pct95));
-                workerStats.put_to_metrics(key + "--pct98" , new Double(pct98));
-                workerStats.put_to_metrics(key + "--pct99" , new Double(pct99));
-                workerStats.put_to_metrics(key + "--pct999", new Double(pct999));
+                //workerStats.put_to_metrics(key + "--pct75" , new Double(pct75));
+                //workerStats.put_to_metrics(key + "--pct95" , new Double(pct95));
+                //workerStats.put_to_metrics(key + "--pct98" , new Double(pct98));
+                //workerStats.put_to_metrics(key + "--pct99" , new Double(pct99));
+                //workerStats.put_to_metrics(key + "--pct999", new Double(pct999));
                 workerStats.put_to_metrics(key + "--max"   , new Double(max));
                 workerStats.put_to_metrics(key + "--min"   , new Double(min));
                 workerStats.put_to_metrics(key + "--means" , new Double(means));
-                workerStats.put_to_metrics(key + "--median", new Double(median));
-                workerStats.put_to_metrics(key + "--stddev", new Double(stddev));
-                for (int i = 0; i < vals.length; i++){
-                    workerStats.put_to_metrics(key + "--vals" + i,   new Double(vals[i]));
-                }
-
-                try {
-                    client.consumeMetric(key, count);
-                } catch (TException ex){
-                    LOG.error("TException consuming: {}", ex);
-                } catch (Exception ex){
-                    LOG.error("Exception consuming: {}", ex);
-                }
+               // workerStats.put_to_metrics(key + "--median", new Double(median));
+               // workerStats.put_to_metrics(key + "--stddev", new Double(stddev));
+               //for (int i = 0; i < vals.length; i++){
+               //    workerStats.put_to_metrics(key + "--vals" + i,   new Double(vals[i]));
+               //}
             }
         }
         if (timers != null) {
@@ -191,14 +229,6 @@ public class StormMetricReporter extends ScheduledReporter {
                 workerStats.put_to_metrics(key + "--stddev", new Double(stddev));
                 for (int i = 0; i < vals.length; i++){
                     workerStats.put_to_metrics(key + "--vals" + i,   new Double(vals[i]));
-                }
-
-                try {
-                    client.consumeMetric(key, count);
-                } catch (TException ex){
-                    LOG.error("TException consuming: {}", ex);
-                } catch (Exception ex){
-                    LOG.error("Exception consuming: {}", ex);
                 }
             }
         }
