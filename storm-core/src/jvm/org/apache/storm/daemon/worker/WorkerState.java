@@ -23,6 +23,7 @@ import com.google.common.collect.Sets;
 import org.apache.storm.Config;
 import org.apache.storm.Constants;
 import org.apache.storm.StormTimer;
+import org.apache.storm.cluster.DaemonType;
 import org.apache.storm.cluster.IStateStorage;
 import org.apache.storm.cluster.IStormClusterState;
 import org.apache.storm.cluster.VersionedData;
@@ -48,6 +49,7 @@ import org.apache.storm.messaging.IContext;
 import org.apache.storm.messaging.TaskMessage;
 import org.apache.storm.messaging.TransportFactory;
 import org.apache.storm.metrics2.StormMetricRegistry;
+import org.apache.storm.metrics2.reporters.MetricReporterConfig;
 import org.apache.storm.serialization.KryoTupleSerializer;
 import org.apache.storm.task.WorkerTopologyContext;
 import org.apache.storm.tuple.AddressedTuple;
@@ -331,6 +333,8 @@ public class WorkerState {
         this.drainer = new TransferDrainer();
         //TODO-AB: use or deprecate the scope
         this.metricRegistry = new StormMetricRegistry(new ArrayList<String>());
+        MetricReporterConfig reporterConfig = new MetricReporterConfig(this.metricRegistry, DaemonType.WORKER, workerId);
+        reporterConfig.configure(conf);
     }
 
     public StormMetricRegistry getMetricRegistry() {

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.storm.metrics2;
+package org.apache.storm.metrics2.reporters;
 
 import java.util.HashMap;
 import java.util.HashSet;

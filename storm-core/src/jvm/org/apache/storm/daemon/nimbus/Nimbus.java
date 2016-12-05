@@ -2460,12 +2460,17 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
                 LSWorkerStats lsWorkerStats = metric.getValue();
                 long tstamp = lsWorkerStats.get_time_stamp();
                 Map<String, Double> metricValues = lsWorkerStats.get_metrics();
+                if (metricValues == null) {
+                    System.out.println("null metric values...");
+                    continue;
+                }
                 for (Entry<String, Double> metricValue : metricValues.entrySet()){
                     //store
                     String key = metricValue.getKey();
                     Double value = metricValue.getValue();
 
-                    String[] keyParts = key.split(".");
+                    String[] keyParts = key.split("\\.");
+                    System.out.println(key);
                     String execId = keyParts[0];
                     String stream = keyParts[1];
                     String compId = keyParts[2];
