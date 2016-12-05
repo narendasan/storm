@@ -16,11 +16,12 @@
  * limitations under the License.
  */
 
-package org.apache.storm.metric;
+package org.apache.storm.metrics2;
 
 import com.codahale.metrics.MetricRegistry;
 
 import java.util.List;
+import java.util.Map;
 
 public class StormMetricRegistry extends MetricRegistry{
     private final String metricScope;

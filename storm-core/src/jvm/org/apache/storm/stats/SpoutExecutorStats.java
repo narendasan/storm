@@ -23,7 +23,7 @@ import org.apache.storm.generated.SpoutStats;
 import org.apache.storm.metric.internal.MultiCountStatAndMetric;
 import org.apache.storm.metric.internal.MultiLatencyStatAndMetric;
 
-import org.apache.storm.metric.StormMetricRegistry;
+import org.apache.storm.metrics2.StormMetricRegistry;
 
 import com.codahale.metrics.Counter;
 

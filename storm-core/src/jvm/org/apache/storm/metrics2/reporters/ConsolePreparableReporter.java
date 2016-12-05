@@ -15,44 +15,60 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.daemon.metrics.reporters;
+package org.apache.storm.metrics2.reporters;
 
-import com.codahale.metrics.JmxReporter;
+import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
-import org.apache.storm.Config;
 import org.apache.storm.daemon.metrics.MetricsUtils;
-import org.apache.storm.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class JmxPreparableReporter implements PreparableReporter<JmxReporter> {
-    private final static Logger LOG = LoggerFactory.getLogger(JmxPreparableReporter.class);
-    JmxReporter reporter = null;
+public class ConsolePreparableReporter implements PreparableReporter<ConsoleReporter> {
+    private final static Logger LOG = LoggerFactory.getLogger(ConsolePreparableReporter.class);
+    ConsoleReporter reporter = null;
+
+    long reportingPeriod;
+    TimeUnit reportingPeriodUnit;
 
     @Override
-    public void prepare(MetricRegistry metricsRegistry, Map stormConf) {
-        LOG.info("Preparing...");
-        JmxReporter.Builder builder = JmxReporter.forRegistry(metricsRegistry);
-        String domain = Utils.getString(stormConf.get(Config.STORM_DAEMON_METRICS_REPORTER_PLUGIN_DOMAIN), null);
-        if (domain != null) {
-            builder.inDomain(domain);
+    public void prepare(MetricRegistry registry, Map stormConf, Map reporterConf, String daemonId) {
+        LOG.debug("Preparing ConsoleReporter");
+        ConsoleReporter.Builder builder = ConsoleReporter.forRegistry(registry);
+
+        builder.outputTo(System.out);
+        Locale locale = MetricsUtils.getMetricsReporterLocale(stormConf);
+        if (locale != null) {
+            builder.formattedFor(locale);
         }
+
         TimeUnit rateUnit = MetricsUtils.getMetricsRateUnit(stormConf);
         if (rateUnit != null) {
             builder.convertRatesTo(rateUnit);
         }
-        reporter = builder.build();
 
+        TimeUnit durationUnit = MetricsUtils.getMetricsDurationUnit(stormConf);
+        if (durationUnit != null) {
+            builder.convertDurationsTo(durationUnit);
+        }
+
+        //defaults to 10
+        reportingPeriod = MetricsUtils.getMetricsSchedulePeriod(reporterConf);
+
+        //defaults to seconds
+        reportingPeriodUnit = MetricsUtils.getMetricsSchedulePeriodUnit(reporterConf);
+
+        reporter = builder.build();
     }
 
     @Override
     public void start() {
         if (reporter != null) {
             LOG.debug("Starting...");
-            reporter.start();
+            reporter.start(reportingPeriod, reportingPeriodUnit);
         } else {
             throw new IllegalStateException("Attempt to start without preparing " + getClass().getSimpleName());
         }

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.metric;
+package org.apache.storm.metrics2.reporters;
 
 import java.util.concurrent.TimeUnit;
 import java.util.SortedMap;
@@ -33,41 +33,32 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.MetricRegistryListener;
 
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TFramedTransport;
-
 import org.apache.storm.generated.Nimbus;
 import org.apache.storm.generated.LSWorkerStats;
 
 import org.apache.storm.utils.LocalState;
+import org.apache.storm.utils.ConfigUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StormMetricReporter extends ScheduledReporter {
-    TTransport transport;
-    Nimbus.Client client;
+// TODO: move out of reporters namespace
+import org.apache.storm.metrics2.reporters.PreparableReporter;
+
+public class StormMetricReporter extends ScheduledReporter implements PreparableReporter<StormMetricReporter> {
+
+    StormMetricReporter reporter = null;
     LocalState state;
-    String stormId;
-    int port;
+
     long _reportTime = 0;
     long _prevReportTime = 0;
 
+    private Map<String, Long> counterCache;
     private static final Logger LOG = LoggerFactory.getLogger(StormMetricReporter.class);
 
-    private Map<String, Long> counterCache;
-
-    public StormMetricReporter(MetricRegistry registry, LocalState state, String stormId, int port,
-                               String name, MetricFilter filter, 
-                               TimeUnit rateUnit, TimeUnit durationUnit) throws org.apache.thrift.transport.TTransportException {
-        super(registry, name, filter, rateUnit, durationUnit);
-
-        counterCache = new HashMap<String, Long>();
-
+    public StormMetricReporter (MetricRegistry registry, LocalState state, 
+                MetricFilter filter, TimeUnit rateUnit, TimeUnit durationUnit) {
+        super(registry, "storm-default-reporter", filter, rateUnit, durationUnit);
         // compute cache
         registry.addListener(new MetricRegistryListener() {
             @Override
@@ -106,17 +97,28 @@ public class StormMetricReporter extends ScheduledReporter {
         });
 
         this.state = state;
-        this.stormId = stormId;
-        this.port = port;
+    }
 
-        //TODO get from config
+    @Override
+    public void prepare(MetricRegistry registry, Map stormConf, Map reporterConf, String daemonId) {
+        try {
+            System.out.println("Configuring StormMetricReporter for " + " " + daemonId + " " + reporterConf);
+            LocalState state = ConfigUtils.workerState (stormConf, daemonId);
+            reporter = new StormMetricReporter(registry, state, MetricFilter.ALL, TimeUnit.MILLISECONDS, TimeUnit.MILLISECONDS);
+            Integer interval = (Integer)reporterConf.get("interval.seconds");
+            reporter.start(interval.longValue(), TimeUnit.SECONDS);
+        } catch (Exception e){
+            // TODO: return false?
+            System.out.println(e);
+        }
+    }
 
-        transport = new TSocket("localhost", 6627);
-        TFramedTransport ft = new TFramedTransport(transport);
-        ft.open();
+    @Override
+    public void start(){
+    }
 
-        TProtocol protocol = new TBinaryProtocol(ft);
-        client = new Nimbus.Client(protocol);
+    @Override
+    public void stop(){
     }
 
     @Override

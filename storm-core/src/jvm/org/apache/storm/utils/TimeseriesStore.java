@@ -32,7 +32,6 @@ public class TimeseriesStore {
     private String _root;
     
     public TimeseriesStore(String path) throws IOException {
-        System.out.println("Timeseries Store for " + path);
       _root = path;
       mkdirs(_root);
     }
