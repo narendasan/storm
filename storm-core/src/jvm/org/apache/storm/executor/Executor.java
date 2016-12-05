@@ -115,11 +115,10 @@ public abstract class Executor implements Callable, EventHandler<Object> {
     protected final Boolean isDebug;
     protected final Boolean hasEventLoggers;
     protected String hostname;
-    protected final StormMetricRegistry metrics;
 
     protected Executor(WorkerState workerData, List<Long> executorId, Map<String, String> credentials) {
         this.workerData = workerData;
-        metrics = (StormMetricRegistry) this.workerData.get("metric-registry");
+        StormMetricRegistry metrics = workerData.getMetricRegistry();
         this.executorId = executorId;
         this.workerTopologyContext = workerData.getWorkerTopologyContext();
         this.taskIds = StormCommon.executorIdToTasks(executorId);
@@ -182,6 +181,7 @@ public abstract class Executor implements Callable, EventHandler<Object> {
         WorkerTopologyContext workerTopologyContext = workerState.getWorkerTopologyContext();
         List<Integer> taskIds = StormCommon.executorIdToTasks(executorId);
         String componentId = workerTopologyContext.getComponentId(taskIds.get(0));
+        StormMetricRegistry metrics = workerState.getMetricRegistry();
 
         String type = getExecutorType(workerTopologyContext, componentId);
         if (StatsUtil.SPOUT.equals(type)) {

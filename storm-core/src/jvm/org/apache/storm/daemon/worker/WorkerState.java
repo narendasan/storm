@@ -47,6 +47,7 @@ import org.apache.storm.messaging.IConnection;
 import org.apache.storm.messaging.IContext;
 import org.apache.storm.messaging.TaskMessage;
 import org.apache.storm.messaging.TransportFactory;
+import org.apache.storm.metrics2.StormMetricRegistry;
 import org.apache.storm.serialization.KryoTupleSerializer;
 import org.apache.storm.task.WorkerTopologyContext;
 import org.apache.storm.tuple.AddressedTuple;
@@ -260,6 +261,8 @@ public class WorkerState {
 
     private static final long LOAD_REFRESH_INTERVAL_MS = 5000L;
 
+    private StormMetricRegistry metricRegistry;
+
     public WorkerState(Map conf, IContext mqContext, String topologyId, String assignmentId, int port, String workerId,
         Map topologyConf, IStateStorage stateStorage, IStormClusterState stormClusterState)
         throws IOException, InvalidTopologyException {
@@ -326,6 +329,12 @@ public class WorkerState {
             LOG.warn("WILL TRY TO SERIALIZE ALL TUPLES (Turn off {} for production", Config.TOPOLOGY_TESTING_ALWAYS_TRY_SERIALIZE);
         }
         this.drainer = new TransferDrainer();
+        //TODO-AB: use or deprecate the scope
+        this.metricRegistry = new StormMetricRegistry(new ArrayList<String>());
+    }
+
+    public StormMetricRegistry getMetricRegistry() {
+        return this.metricRegistry;
     }
 
     public void refreshConnections() {

@@ -109,6 +109,7 @@ import org.apache.storm.generated.SubmitOptions;
 import org.apache.storm.generated.SupervisorInfo;
 import org.apache.storm.generated.SupervisorPageInfo;
 import org.apache.storm.generated.SupervisorSummary;
+import org.apache.storm.generated.SupervisorWorkerStats;
 import org.apache.storm.generated.TopologyActionOptions;
 import org.apache.storm.generated.TopologyHistoryInfo;
 import org.apache.storm.generated.TopologyInfo;
@@ -118,6 +119,9 @@ import org.apache.storm.generated.TopologyStatus;
 import org.apache.storm.generated.TopologySummary;
 import org.apache.storm.generated.WorkerResources;
 import org.apache.storm.generated.WorkerSummary;
+import org.apache.storm.generated.SupervisorWorkerStats;
+import org.apache.storm.generated.WorkerStats;
+import org.apache.storm.generated.LSWorkerStats;
 import org.apache.storm.logging.ThriftAccessLogger;
 import org.apache.storm.metric.ClusterMetricsConsumerExecutor;
 import org.apache.storm.metric.StormMetricsRegistry;
@@ -171,6 +175,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.Meter;
+import org.apache.storm.metrics2.store.RocksConnector;
+import org.apache.storm.metrics2.store.Metric;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
@@ -179,6 +185,7 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
     private final static Logger LOG = LoggerFactory.getLogger(Nimbus.class);
     
     //    Metrics
+    private final RocksConnector metricsStore;
     private static final Meter submitTopologyWithOptsCalls = registerMeter("nimbus:num-submitTopologyWithOpts-calls");
     private static final Meter submitTopologyCalls = registerMeter("nimbus:num-submitTopology-calls");
     private static final Meter killTopologyWithOptsCalls = registerMeter("nimbus:num-killTopologyWithOpts-calls");
@@ -1071,6 +1078,8 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
     public Nimbus(Map<String, Object> conf, INimbus inimbus, IStormClusterState stormClusterState, NimbusInfo hostPortInfo,
             BlobStore blobStore, ILeaderElector leaderElector, IGroupMappingServiceProvider groupMapper) throws Exception {
         this.conf = conf;
+        this.metricsStore = new RocksConnector("/tmp/storm_rocks");
+
         if (hostPortInfo == null) {
             hostPortInfo = NimbusInfo.fromConf(conf);
         }
@@ -2436,6 +2445,39 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
     }
     
     //THRIFT SERVER METHODS...
+    @Override
+    public void consumeWorkerStats(SupervisorWorkerStats supervisorWorkerStats){
+        // TODO-AB: the naming in the thrift object could be 1M times better
+        for (Entry<String, WorkerStats> ws : supervisorWorkerStats.get_worker_stats().entrySet()) {
+            WorkerStats workerStats = ws.getValue();
+            String topoId = workerStats.get_storm_id();
+            Map<Long, LSWorkerStats> metrics = workerStats.get_metrics();
+            if (metrics== null){
+                System.out.println("null metrics...!!");
+                continue;
+            }
+            for (Entry<Long, LSWorkerStats> metric : metrics.entrySet()) {
+                LSWorkerStats lsWorkerStats = metric.getValue();
+                long tstamp = lsWorkerStats.get_time_stamp();
+                Map<String, Double> metricValues = lsWorkerStats.get_metrics();
+                for (Entry<String, Double> metricValue : metricValues.entrySet()){
+                    //store
+                    String key = metricValue.getKey();
+                    Double value = metricValue.getValue();
+
+                    String[] keyParts = key.split(".");
+                    String execId = keyParts[0];
+                    String stream = keyParts[1];
+                    String compId = keyParts[2];
+                    String metricName = keyParts[3];
+                
+                    Metric m = new Metric(metricName, tstamp, execId, compId, topoId, String.valueOf(value));
+                    this.metricsStore.insert(m);
+                    System.out.println(this.metricsStore.scan());
+                }
+            }
+        }
+    }
     
     @Override
     public void submitTopology(String name, String uploadedJarLocation, String jsonConf, StormTopology topology)
