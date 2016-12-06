@@ -260,6 +260,7 @@ public class WorkerState {
     private final AtomicLong nextUpdate = new AtomicLong(0);
     private final boolean trySerializeLocal;
     private final TransferDrainer drainer;
+    private final MetricReporterConfig reporterConfig;
 
     private static final long LOAD_REFRESH_INTERVAL_MS = 5000L;
 
@@ -333,8 +334,12 @@ public class WorkerState {
         this.drainer = new TransferDrainer();
         //TODO-AB: use or deprecate the scope
         this.metricRegistry = new StormMetricRegistry(new ArrayList<String>());
-        MetricReporterConfig reporterConfig = new MetricReporterConfig(this.metricRegistry, DaemonType.WORKER, workerId);
+        reporterConfig = new MetricReporterConfig(this.metricRegistry, DaemonType.WORKER, workerId);
         reporterConfig.configure(conf);
+    }
+
+    public void stopMetricReporters() {
+        reporterConfig.stop();
     }
 
     public StormMetricRegistry getMetricRegistry() {
