@@ -186,7 +186,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.Meter;
-import org.apache.storm.metrics2.store.RocksConnector;
+import org.apache.storm.metrics2.store.RocksDBConnector;
 import org.apache.storm.metrics2.store.Metric;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -196,7 +196,7 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
     private final static Logger LOG = LoggerFactory.getLogger(Nimbus.class);
     
     //    Metrics
-    private final RocksConnector metricsStore;
+    private final RocksDBConnector metricsStore;
     private static final Meter submitTopologyWithOptsCalls = registerMeter("nimbus:num-submitTopologyWithOpts-calls");
     private static final Meter submitTopologyCalls = registerMeter("nimbus:num-submitTopology-calls");
     private static final Meter killTopologyWithOptsCalls = registerMeter("nimbus:num-killTopologyWithOpts-calls");
@@ -1089,7 +1089,7 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
     public Nimbus(Map<String, Object> conf, INimbus inimbus, IStormClusterState stormClusterState, NimbusInfo hostPortInfo,
             BlobStore blobStore, ILeaderElector leaderElector, IGroupMappingServiceProvider groupMapper) throws Exception {
         this.conf = conf;
-        this.metricsStore = new RocksConnector("/tmp/storm_rocks");
+        this.metricsStore = new RocksDBConnector("/tmp/storm_rocks");
 
         if (hostPortInfo == null) {
             hostPortInfo = NimbusInfo.fromConf(conf);
