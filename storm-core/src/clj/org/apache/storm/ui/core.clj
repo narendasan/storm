@@ -39,7 +39,8 @@
             TopologyStats CommonAggregateStats ComponentAggregateStats
             ComponentType BoltAggregateStats SpoutAggregateStats
             ExecutorAggregateStats SpecificAggregateStats ComponentPageInfo
-            LogConfig LogLevel LogLevelAction SupervisorPageInfo WorkerSummary])
+            LogConfig LogLevel LogLevelAction SupervisorPageInfo WorkerSummary
+            StatsSpec ])
   (:import [org.apache.storm.security.auth AuthUtils ReqContext])
   (:import [org.apache.storm.generated AuthorizationException ProfileRequest ProfileAction NodeInfo])
   (:import [org.apache.storm.security.auth AuthUtils])
@@ -1132,11 +1133,37 @@
                  callback
                  :status 501))
 
+(defn get-stats 
+  ([topology-id metric]
+   (get-stats topology-id metric nil))
+  ([topology-id metric component]
+    (thrift/with-configured-nimbus-connection nimbus
+      (let [stats-spec (doto (StatsSpec.) 
+                         (.set_topology_id topology-id)
+                         (.set_component component)
+                         (.set_metric metric))
+            stats (.getStats ^Nimbus$Client nimbus stats-spec)]
+        (dofor [stat (.get_windowed_stats stats)]
+         {"topologyId" (.get_topology_id stat)
+          "component" (.get_component stat)
+          "executor_id" (.get_executor_id stat)
+          "value" (.get_value stat)})))))
+
 (defroutes main-routes
   (GET "/api/v1/cluster/configuration" [& m]
     (.mark ui:num-cluster-configuration-http-requests)
     (json-response (cluster-configuration)
                    (:callback m) :need-serialize false))
+  (GET "/api/v1/stats/:id/:metric/:component" [:as {:keys [cookies servlet-request scheme]} id metric component & m]
+    (populate-context! servlet-request)
+    (assert-authorized-user "getClusterInfo")
+    (json-response (get-stats id metric component) (:callback m)))
+
+  (GET "/api/v1/stats/:id/:metric" [:as {:keys [cookies servlet-request scheme]} id metric & m]
+    (populate-context! servlet-request)
+    (assert-authorized-user "getClusterInfo")
+    (json-response (get-stats id metric) (:callback m)))
+
   (GET "/api/v1/cluster/summary" [:as {:keys [cookies servlet-request]} & m]
     (.mark ui:num-cluster-summary-http-requests)
     (populate-context! servlet-request)

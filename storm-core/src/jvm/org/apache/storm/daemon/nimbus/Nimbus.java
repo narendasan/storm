@@ -105,6 +105,17 @@ import org.apache.storm.generated.RebalanceOptions;
 import org.apache.storm.generated.SettableBlobMeta;
 import org.apache.storm.generated.StormBase;
 import org.apache.storm.generated.StormTopology;
+
+import org.apache.storm.generated.StormStats;
+import org.apache.storm.generated.StatsSpec;
+import org.apache.storm.generated.Window;
+import org.apache.storm.generated.StatsStoreOperation;
+import org.apache.storm.generated.StormWindowedStats;
+import org.apache.storm.metrics2.store.Aggregation;
+import org.apache.storm.metrics2.store.MetricException;
+
+import org.apache.storm.generated.StormStats;
+import org.apache.storm.generated.StatsSpec;
 import org.apache.storm.generated.SubmitOptions;
 import org.apache.storm.generated.SupervisorInfo;
 import org.apache.storm.generated.SupervisorPageInfo;
@@ -2478,10 +2489,82 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
                 
                     Metric m = new Metric(metricName, tstamp, execId, compId, topoId, String.valueOf(value));
                     this.metricsStore.insert(m);
-                    System.out.println(this.metricsStore.scan());
                 }
             }
         }
+    }
+
+    @Override
+    public StormStats getStats(StatsSpec spec) {
+        StormStats result = new StormStats();
+
+        List<Window> windows = spec.get_windows();
+        windows = windows == null ? new ArrayList<Window>() : windows;
+        String topologyId = spec.get_topology_id();
+        String component = spec.get_component();
+        String executorId = spec.get_executor_id();
+        String metric = spec.get_metric();
+        StatsStoreOperation op = spec.get_op();
+
+        System.out.println(this.metricsStore.scan());
+
+        if (windows.size() == 0){
+            // default to all time
+            windows.add(Window.ALL);
+        }
+
+        for(Window window : windows) {
+            StormWindowedStats windowedStat = new StormWindowedStats();
+            windowedStat.set_window (window);
+            windowedStat.set_topology_id (topologyId);
+            windowedStat.set_component (component);
+            windowedStat.set_executor_id (executorId);
+
+            Aggregation agg = new Aggregation(this.metricsStore);
+           
+            if (topologyId != null){
+                agg.filterTopo(topologyId); 
+            }
+            if (component != null) {
+                agg.filterComp(component); 
+            }
+            if (metric != null) {
+                agg.filterMetric(metric); 
+            }   
+
+            long startTime = 0;
+            long endTime = 0;
+            // TODO-AB: switch over windows and set start/end time
+            //switch (window.getValue()){
+            //    case Window.ALL:
+            //        // NO-OP get all time
+            //        break;
+            //    case Window.FIVE_MIN:
+            //        break;
+            //    case Window.THREE_HR:
+            //        break;
+            //    case Window.ONE_DAY:
+            //        break;
+            //}
+
+            //if (startTime != 0) { 
+            //    agg.filterStartTime(startTime);
+            //} 
+
+            //if (endTime != 0) {
+            //    agg.filterEndTime(endTime);
+            //}
+
+            try {
+                double value = agg.sum();
+                windowedStat.set_value (value);
+                result.add_to_windowed_stats(windowedStat);
+            } catch (MetricException exp){
+                LOG.error ("Exception computing metrics", exp);
+            }
+        }
+
+        return result;
     }
     
     @Override

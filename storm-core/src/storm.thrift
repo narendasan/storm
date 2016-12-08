@@ -632,6 +632,41 @@ struct TopologyHistoryInfo {
   1: list<string> topo_ids;
 }
 
+enum StatsStoreOperation {
+  SUM = 0,
+  AVG = 1,
+  MIN = 2,
+  MAX = 3 
+}
+
+enum Window {
+  ALL       = 0,
+  FIVE_MIN  = 1,
+  THREE_HR  = 2,
+  ONE_DAY   = 3 
+}
+
+struct StatsSpec {
+  1: optional StatsStoreOperation op = StatsStoreOperation.SUM;
+  2: optional list<Window> windows;
+  3: optional string topology_id;
+  4: optional string component;
+  5: optional string executor_id;
+  6: optional string metric;
+}
+
+struct StormWindowedStats {
+  1: optional Window window;
+  2: optional string topology_id;
+  3: optional string component;
+  4: optional string executor_id;
+  5: optional double value;
+}
+
+struct StormStats {
+  1: optional list<StormWindowedStats> windowed_stats;
+}
+
 service Nimbus {
   void submitTopology(1: string name, 2: string uploadedJarLocation, 3: string jsonConf, 4: StormTopology topology) throws (1: AlreadyAliveException e, 2: InvalidTopologyException ite, 3: AuthorizationException aze);
   void submitTopologyWithOpts(1: string name, 2: string uploadedJarLocation, 3: string jsonConf, 4: StormTopology topology, 5: SubmitOptions options) throws (1: AlreadyAliveException e, 2: InvalidTopologyException ite, 3: AuthorizationException aze);
@@ -642,6 +677,8 @@ service Nimbus {
   void rebalance(1: string name, 2: RebalanceOptions options) throws (1: NotAliveException e, 2: InvalidTopologyException ite, 3: AuthorizationException aze);
 
   void consumeWorkerStats(1: SupervisorWorkerStats stats);
+
+  StormStats getStats(1: StatsSpec spec);
 
   // dynamic log levels
   void setLogConfig(1: string name, 2: LogConfig config);
