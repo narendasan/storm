@@ -1089,7 +1089,8 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
     public Nimbus(Map<String, Object> conf, INimbus inimbus, IStormClusterState stormClusterState, NimbusInfo hostPortInfo,
             BlobStore blobStore, ILeaderElector leaderElector, IGroupMappingServiceProvider groupMapper) throws Exception {
         this.conf = conf;
-        this.metricsStore = new RocksDBConnector("/tmp/storm_rocks");
+        this.metricsStore = new RocksDBConnector();
+        this.metricsStore.prepare(conf);
 
         if (hostPortInfo == null) {
             hostPortInfo = NimbusInfo.fromConf(conf);
