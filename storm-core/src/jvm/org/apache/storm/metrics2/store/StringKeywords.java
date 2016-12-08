@@ -15,19 +15,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.storm.metrics2.store;
 
 
-public class MetricException extends Exception
+public class StringKeywords
 {
-    public MetricException()
-    {
-        super();
-    }
-
-    public MetricException(String exc)
-    {
-        super(exc);
-    }
+    public final static String metricName = "metricName";
+    public final static String topoId = "topoId";
+    public final static String time = "time";
+    public final static String timeStart = "timeStart";
+    public final static String timeEnd = "timeEnd";
+    public final static String component = "component";
+    public final static String executor = "executor";
+    public final static String host = "host";
+    public final static String port = "port";
+    public final static String stream = "stream";
 }

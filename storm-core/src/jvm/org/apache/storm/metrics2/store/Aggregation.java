@@ -23,45 +23,56 @@ import java.util.HashMap;
 
 public class Aggregation {
 
-    // Rocks component
-    private RocksConnector connector;
+    // Store component
+    private MetricStore store;
 
     // Key components
-    private HashMap settings = new HashMap();
+    private HashMap<String, Object> settings;
 
-    public Aggregation(RocksConnector connector) {
-        this.connector = connector;
+    public Aggregation(MetricStore store) {
+        this.store = store;
+        settings = new HashMap<String, Object>();
     }
 
     // Filter for specific fields
     // Todo: Filter for different instances of the same field, two hosts for example
 
     public void filterMetric(String metric) {
-        this.settings.put("metric", metric);
+        this.settings.put(StringKeywords.metricName, metric);
     }
 
     public void filterTopo(String topoId) {
-        this.settings.put("topoId", topoId);
+        this.settings.put(StringKeywords.topoId, topoId);
     }
 
     public void filterHost(String host) {
-        this.settings.put("host", host);
+        this.settings.put(StringKeywords.host, host);
     }
 
     public void filterPort(String port) {
-        this.settings.put("port", port);
+        this.settings.put(StringKeywords.port, port);
     }
 
     public void filterComp(String comp) {
-        this.settings.put("compId", comp);
+        this.settings.put(StringKeywords.component, comp);
+    }
+
+    public void filterTimeStart(Long time) { this.settings.put("startTime", time);}
+
+    public void filterTimeEnd(Long time) { this.settings.put("endTime", time);}
+
+    public void filterTime(String startTime, String endTime) {
+        this.settings.put("startTime", startTime);
+        this.settings.put("endTime", endTime);
     }
 
     // Aggregations
 
     public Double sum() throws MetricException {
         Double sum = 0.0;
-        List<String> x = this.connector.scan(settings);
+        List<String> x = this.store.scan(settings);
         for(String each : x) {
+            //System.out.println(each);
             sum += Double.parseDouble(each);
         }
         return sum;
@@ -69,7 +80,7 @@ public class Aggregation {
 
     public Double min() throws MetricException {
         Double min = Double.MAX_VALUE;
-        List<String> x = this.connector.scan(settings);
+        List<String> x = this.store.scan(settings);
         for(String each : x) {
             Double curr = Double.parseDouble(each);
             if(curr < min) {
@@ -81,7 +92,7 @@ public class Aggregation {
 
     public Double max() throws MetricException {
         Double max = Double.MIN_VALUE;
-        List<String> x = this.connector.scan(settings);
+        List<String> x = this.store.scan(settings);
         for(String each : x) {
             Double curr = Double.parseDouble(each);
             if(curr > max) {
@@ -94,7 +105,7 @@ public class Aggregation {
     public Double mean() throws MetricException {
         Double sum = 0.0;
         Integer count = 0;
-        List<String> x = this.connector.scan(settings);
+        List<String> x = this.store.scan(settings);
         for(String each : x) {
             sum += Integer.parseInt(each);
             count++;
