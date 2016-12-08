@@ -21,11 +21,11 @@
   (:require [org.apache.storm.internal.thrift :as thrift])
   (:import [org.apache.storm Testing Config ILocalCluster]
            [org.apache.storm.generated GlobalStreamId])
-  (:import [org.apache.storm.tuple Values Tuple Fields])
+  (:import [org.apache.storm.tuple Values Tuple])
   (:import [org.apache.storm.utils Time Utils])
   (:import [org.apache.storm.testing MkClusterParam TestJob MockedSources TestWordSpout FeederSpout
             TestWordCounter TestGlobalCount TestAggregatesCounter CompleteTopologyParam
-            AckFailMapTracker MkTupleParam FeederTuple])
+            AckFailMapTracker MkTupleParam])
   (:import [org.apache.storm.utils Utils])
   (:import [org.apache.storm Thrift]))
 
